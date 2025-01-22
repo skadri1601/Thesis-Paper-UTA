@@ -1,0 +1,81 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id      Int       @id @default(autoincrement())
+  name    String
+  password    String
+  email   String    @unique
+  role    String // Define roles as needed, e.g., "Author", "Reviewer", etc.
+  theses  Thesis[]  @relation("AuthorTheses")
+  reviews Thesis[]  @relation("ReviewerTheses")
+  Comment Comment[]
+
+  // Add the reverse relation for notification audits
+  notificationAudits NotificationAudit[]
+}
+
+model Thesis {
+  id                 Int       @id @default(autoincrement())
+  title              String
+  abstract           String
+  contributorAuthors String
+  references         String
+  publishYear        String?
+  keyword            String
+  document           String
+  status             String
+  review_comment     String?
+  authorId           Int  
+  reviewerId         Int? 
+  view_count         Int     @default(0)
+
+  author   User      @relation("AuthorTheses", fields: [authorId], references: [id], onDelete: Cascade)
+  reviewer User?     @relation("ReviewerTheses", fields: [reviewerId], references: [id], onDelete: Cascade)
+  comments Comment[] @relation("ThesisComments")
+  
+  // Add the reverse relation for notifications
+  notifications Notification[] @relation("ThesisNotifications")
+}
+
+model Comment {
+  id        Int    @id @default(autoincrement())
+  comment   String
+  userId    Int
+  thesisId  Int
+
+  user      User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  thesis    Thesis @relation("ThesisComments", fields: [thesisId], references: [id], onDelete: Cascade)
+}
+
+model Notification {
+  id       Int     @id @default(autoincrement())
+  title    String
+  thesisId Int
+
+  // Add reverse relation with the name "ThesisNotifications"
+  thesis   Thesis  @relation("ThesisNotifications", fields: [thesisId], references: [id], onDelete: Cascade)
+  audits   NotificationAudit[]
+}
+
+model NotificationAudit {
+  id             Int          @id @default(autoincrement())
+  notificationId Int
+  userId         Int
+  status         Boolean      @default(false)
+
+  notification   Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
